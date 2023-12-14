@@ -10,7 +10,7 @@ list_of_packages <- c(
   "shiny", "waiter", "mapdeck", "dplyr", "adehabitatHR", "shinythemes", "shinyWidgets",
   "mapboxer", "sf", "rgdal", "httr", "shinyBS", "RSQLite", "move", "shinycssloaders",
   "raster", "shinyjs", "data.table", "leaflet", "bsplus", "RColorBrewer", "bslib",
-  "furrr", "shinyalert", "ggplot2", "shinyglide", "shinyFiles"
+  "furrr", "shinyalert", "ggplot2", "shinyglide", "shinyFiles", "sqldf"
 )
 
 # Check and install any missing packages from the list
@@ -55,7 +55,8 @@ source("scripts/mort.check.R",local=TRUE)
 
 
 # Dependencies to be loaded for certain functions
-dependencies<-c("shiny","sf","mapdeck", "circular","shinyjs","shinyBS","sp","ggplot2","mapboxer","rgdal","adehabitatHR",'RSQLite','move','shinycssloaders','raster','terra','R.utils','waiter', 'shinythemes','shinyWidgets','shinyFiles','shinyglide')
+dependencies<-c("shiny","sf","mapdeck", "circular","shinyjs","shinyBS","sp","ggplot2","mapboxer","rgdal","adehabitatHR",'RSQLite','move','shinycssloaders','raster','terra','R.utils',
+                'waiter', 'shinythemes','shinyWidgets','shinyFiles','shinyglide','sqldf')
 loadDependencies(dependencies)
 
 # Unload the 'lubridate' package if loaded (known to cause issues in app2)
@@ -64,7 +65,7 @@ if("lubridate" %in% (.packages())){
 }
 sf_list <- load_geojson(urls)
 
-# Assign geographic layers from the geojson data to their corresponding variables
+#Assign geographic layers from the geojson data to their corresponding variables
 MuleDeerCrucialRange <- sf_list[[1]]
 MuleDeerHerdUnits <- sf_list[[2]]
 MuleDeerSeasonalRange <- sf_list[[3]]
@@ -346,46 +347,63 @@ ui <-
                
                column(12,
                       HTML('<p>Your dataset(s) have been successfully imported. You now need to
-            identify a unique animal identifier. Using the dropdown below, select the
-            column that contains a unique ID for each animal in your dataset. This
+            identify a study name, species, tag number and unique animal identifier. Using the dropdown below, select the
+            column that contains these values in your dataset. Idenitfying a unique animal identifier
             will be mandatory if you have imported a single shapefile with merged
             individuals. If you have imported many files with multiple individuals
             and do not have a unique ID column, choose "NaN" from the dropdown, and
-            a unique ID will be created from the name of each file.'),
+            a unique ID will be created from the name of each file. If you do not have a a study name, species or tag number field, choose "NaN."'),
                       column(12,
                              HTML('<p>Once you make a choice in the dropdown, press the EXECUTE button to
               continue preparing your data. If you do not have a study name or species column in your data set, please select "NaN" from the drop down option. This will prompt
                                           a write in option.</p>'),
-                             selectInput(
-                               "studynameSelector",
-                               "Select Study Name Column",
-                               choices = NULL,
-                               selected = NULL,
-                               multiple = FALSE
-                             ),
-                             textOutput('studyNameresult'),
-                             
-                             selectInput(
-                               "speciesSelector",
-                               "Select Species Column",
-                               selected = NULL,
-                               choices = NULL,
-                               multiple = FALSE
-                             ),
-                             textOutput('speciesresult'),
+
+                             fluidRow(
+                               column(3,
+                                  selectInput(
+                                  "studynameSelector",
+                                  "Select Study Name Column",
+                                  choices = NULL,
+                                  selected = NULL,
+                                  multiple = FALSE
+                                ),
+                                textOutput('studyNameresult'),
+                               ),
+                               column(3,
+                                      
+                                selectInput(
+                                  "speciesSelector",
+                                  "Select Species Column",
+                                  selected = NULL,
+                                  choices = NULL,
+                                  multiple = FALSE
+                                ),
+                                textOutput('speciesresult'),
+                                
+                          
+                              )),
+
+                             fluidRow(
+                               column(3,
+                          
                              selectInput(
                                "tagIdSelector",
                                "Select Tag ID Column",
                                choices = NULL,
                                selected = NULL,
                                multiple = FALSE
+                             )
                              ),
+                             column(3,
+                                    
                              selectInput(
                                "uniqueIdSelector",
                                "Select Unique Animal Column",
                                choices = NULL,
                                selected = NULL,
                                multiple = FALSE
+                             )
+                             )
                              ),
                   
                             # actionButton('uniqueIdSelectorGo','Execute'),

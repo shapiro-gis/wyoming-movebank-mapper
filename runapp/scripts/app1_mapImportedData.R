@@ -487,15 +487,13 @@ drawInit<-function(){
 
   
   observeEvent(input$beginDate, {
-    # Ensure that individualsSelector is not null
     req(!is.null(input$individualsSelector))
     
     selectedAnimal <- input$individualsSelector
     
-    # Retrieve the startDate value from the reactive function
     start <- startDate()
-    start_posixct <- as.POSIXct(paste0(start, " 00:00:00"))
     
+    start_posixct <- as.POSIXct(start, format = "%Y-%m-%d %H:%M:%S")
     importedDatasetMaster$start_date[importedDatasetMaster$newUid == selectedAnimal] <<- start_posixct
     saveWorkingFile()
     updateProblemAndMortPoints()
@@ -504,20 +502,19 @@ drawInit<-function(){
       update_mapboxer()
   })
   
-  
   observeEvent(input$endDate, {
     req(!is.null(input$individualsSelector))
     
     selectedAnimal <- input$individualsSelector
     
     end <- endDate()
-    end_posixct <- as.POSIXct(paste0(end, " 00:00:00"))
+    
+    end_posixct <- as.POSIXct(end, format = "%Y-%m-%d %H:%M:%S")
     importedDatasetMaster$end_date[importedDatasetMaster$newUid == selectedAnimal] <<- end_posixct
     updateProblemAndMortPoints()
-    
-    saveWorkingFile();
-    
+    saveWorkingFile()
   })
+  
 
 observeEvent(input$manyPointsIsProblemSelector, {
 
@@ -592,6 +589,17 @@ observeEvent(input$manyAnimalID, {
     updateTable('importedDatasetMaster', 'newUid', paste0('where rowIds IN (', toString(pointIdsInDrawBox), ') '), paste0('"', thisValue, '"'))
     #getAnimalYearAverages()
     updateAnimalYears()
+    
+    #Find new min start date value for the new animal
+    subset_data <<- importedDatasetMaster[importedDatasetMaster$newUid == thisValue, ]
+    min_start_date <<- min(subset_data$newMasterDate)
+    importedDatasetMaster$start_date[importedDatasetMaster$newUid == thisValue] <<- min_start_date
+    
+    #Find new max end date value for the new animal
+    max_end_date <<- max(subset_data$newMasterDate)
+    importedDatasetMaster$end_date[importedDatasetMaster$newUid == thisValue] <<- max_end_date
+   
+    
    # updateSelectInput(session, 'manyAnimalID', selected= "")
     saveWorkingFile()
 }, ignoreInit = TRUE)
@@ -732,24 +740,40 @@ addPointsToMap<-function(){
           id='linesLayer'
         )%>%
         update_mapboxer()
-# 
+      
+      pointsForMap@data$isFirstPoint <- FALSE
+      pointsForMap@data$isFirstPoint[1] <- TRUE
+      # 
       mapboxer_proxy("importedDataMapBox") %>%
         add_source(as_mapbox_source(pointsForMap@data,lat="lat",lng="lon"),'pointsSource')%>%
         add_circle_layer(
           source = 'pointsSource',
           circle_color = 'grey',
-          circle_radius = 5,
+          circle_radius = list("case",
+                               list("==", list("get", "isFirstPoint"), TRUE),
+                               8,  # Size for the first point
+                               4.5   # Size for other points
+          ),
           id='pointLayer'
         )%>%
         fit_bounds(c(c(thisBbox[1,1]-0.01, thisBbox[2,1]-0.01),c(thisBbox[1,2]+0.01, thisBbox[2,2]+0.01)))%>%
         update_mapboxer()
-
+      
+      dummyPoint$isFirstPoint <- FALSE
+      dummyPoint$isFirstPoint[1] <-TRUE
+      
+      print(head(dummyPoint,1))
+      
       mapboxer_proxy("importedDataMapBox") %>%
         add_source(as_mapbox_source(dummyPoint,lat="lat",lng="lon"),'mortalitiesSource')%>%
         add_circle_layer(
           source = 'mortalitiesSource',
           circle_color = mortalityColor,
-          circle_radius = 4.5,
+          circle_radius = list("case",
+                               list("==", list("get", "isFirstPoint"), TRUE),
+                               8,  # Size for the first point
+                               4.5   # Size for other points
+          ),
           id='mortalityLayer'
         )%>%
         update_mapboxer()
@@ -759,7 +783,11 @@ addPointsToMap<-function(){
         add_circle_layer(
           source = 'activePoints',
           circle_color = "#000cff",
-          circle_radius = 4.5,
+          circle_radius = list("case",
+                               list("==", list("get", "isFirstPoint"), TRUE),
+                               8,  # Size for the first point
+                               4.5   # Size for other points
+          ),
           id='activeLayer'
         )%>%
         update_mapboxer()
@@ -770,7 +798,11 @@ addPointsToMap<-function(){
           add_circle_layer(
             source = 'problemsSource',
             circle_color = problemsColor,
-            circle_radius = 4.5,
+            circle_radius = list("case",
+                                 list("==", list("get", "isFirstPoint"), TRUE),
+                                 8,  # Size for the first point
+                                 4.5   # Size for other points
+            ),
             id='problemsLayer'
           )%>%
           update_mapboxer()

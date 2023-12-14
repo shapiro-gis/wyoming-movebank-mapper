@@ -204,6 +204,59 @@ app1_init<-function(input,output,session){
   
   
   observeEvent(input$finishDataCleaning,{
+
+    df <- data.frame(importedDatasetMaster)
+    # Group by 'newuid' and summarize startdate and enddate
+    grouped_df <- df %>%
+      group_by(newUid) %>%
+      summarize(deploy_on_date = first(start_date),
+                deploy_off_date = last(end_date),
+                animal_taxon = unique(species),
+                studyname = unique(studyname),
+                tagid = unique(tagID),
+                sex = if("sex" %in% names(df)) unique(sex) else NA)
+    
+    grouped_df$deploy_on_date <- as.Date(grouped_df$deploy_on_date, "%Y-%m-%d")
+    grouped_df$deploy_off_date <- as.Date(grouped_df$deploy_off_date, "%Y-%m-%d")
+    
+    # SQL query to find overlaps
+    query <- "
+        SELECT 
+          a.*, 
+          COUNT(b.rowid) > 0 AS overlap, 
+          COALESCE(GROUP_CONCAT(b.newUid), '') AS overlapping_newUids
+        FROM grouped_df a
+        LEFT JOIN grouped_df b ON a.tagid = b.tagid AND 
+                          NOT a.rowid = b.rowid AND
+                          ((a.deploy_on_date BETWEEN b.deploy_on_date AND b.deploy_off_date) OR
+                          (b.deploy_on_date BETWEEN a.deploy_on_date AND a.deploy_off_date))
+        GROUP BY a.rowid
+        ORDER BY a.rowid
+"
+    
+    overlapping_df <- sqldf(query)
+    
+    unique_overlaps_df <- data.frame(newUid = overlapping_df$overlapping_newUids)
+    unique_overlaps_df <- unique_overlaps_df[unique_overlaps_df$newUid != "", ]
+    
+    
+    unique_overlaps_df <- as.data.frame(unique_overlaps_df)
+
+    if(nrow(unique_overlaps_df) > 0) {
+      print("Showing modal Dialog")
+      shinyalert::shinyalert(
+        title = "Warning",
+        text = paste("There are overlapping date ranges for the following individuals:", 
+                     paste(unique_overlaps_df), ".Please review these animals and adjust the animal start and end dates before finishing.",collapse = ", "),
+        type = "warning"
+      )
+      # showModal(modalDialog(
+      #   title = "Warning: Overlapping UIDs",
+      #   paste("Overlapping newUids detected: ", 
+      #         paste(unique_overlaps_df$newUid, collapse = ", ")), # Assuming newUid is the column you want to display
+      #   footer = modalButton("Close")
+      # ))
+    }
     
     
     # Export the SpatialPointsDataFrame as a shapefile
@@ -290,7 +343,7 @@ app1_init<-function(input,output,session){
     
     df <- df[, -which(names(df) %in% c("dist", "displacementOverall", "nsdYear", "nsdOverall","dt","abs.angle","rel.angle","speed","x", "tag_id", "timestamp",
                                        "y","burst","month","day","jul", "year", "id_yr", "dateTest", "rowIds", "displacementYear","fixRateHours"
-                                       ,"coords.x1","coords.x2"))]
+                                       ,"coords.x1","coords.x2","LAT","LON"))]
 
     df$problem <- ifelse(df$problem == 1, "true", "false")
     
