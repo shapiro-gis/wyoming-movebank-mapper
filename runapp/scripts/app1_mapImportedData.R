@@ -764,19 +764,7 @@ addPointsToMap<-function(){
       
       print(head(dummyPoint,1))
       
-      mapboxer_proxy("importedDataMapBox") %>%
-        add_source(as_mapbox_source(dummyPoint,lat="lat",lng="lon"),'mortalitiesSource')%>%
-        add_circle_layer(
-          source = 'mortalitiesSource',
-          circle_color = mortalityColor,
-          circle_radius = list("case",
-                               list("==", list("get", "isFirstPoint"), TRUE),
-                               8,  # Size for the first point
-                               4.5   # Size for other points
-          ),
-          id='mortalityLayer'
-        )%>%
-        update_mapboxer()
+ 
       
       mapboxer_proxy("importedDataMapBox") %>%
         add_source(as_mapbox_source(dummyPoint,lat="lat",lng="lon"),'activePoints')%>%
@@ -792,6 +780,15 @@ addPointsToMap<-function(){
         )%>%
         update_mapboxer()
       
+      mapboxer_proxy("importedDataMapBox") %>%
+        add_source(as_mapbox_source(dummyPoint,lat="lat",lng="lon"),'mortalitiesSource')%>%
+        add_circle_layer(
+          source = 'mortalitiesSource',
+          circle_color = mortalityColor,
+          circle_radius = 4.5,
+          id='mortalityLayer'
+        )%>%
+        update_mapboxer()
 
         mapboxer_proxy("importedDataMapBox") %>%
           add_source(as_mapbox_source(dummyPoint,lat="lat",lng="lon"),'problemsSource')%>%
